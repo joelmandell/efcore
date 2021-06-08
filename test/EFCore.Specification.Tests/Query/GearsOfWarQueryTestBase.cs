@@ -8796,6 +8796,15 @@ namespace Microsoft.EntityFrameworkCore.Query
                 });
         }
 
+        [ConditionalTheory]
+        [MemberData(nameof(IsAsyncData))]
+        public virtual Task Basic_query_gears(bool async)
+        {
+            return AssertQuery(
+                async,
+                ss => ss.Set<Gear>());
+        }
+
         protected GearsOfWarContext CreateContext()
             => Fixture.CreateContext();
 
