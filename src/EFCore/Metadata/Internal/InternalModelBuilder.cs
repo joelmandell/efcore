@@ -158,13 +158,18 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
                 entityType = Metadata.FindEntityType(clrType);
             }
 
-            if (shouldBeOwned == false
-                && (ShouldBeOwnedType(type)
-                    || entityType != null && entityType.IsOwned()))
+            if (shouldBeOwned == false)
             {
-                // We always throw as configuring a type as owned always comes from user (through Explicit/DataAnnotation)
-                throw new InvalidOperationException(
-                    CoreStrings.ClashingOwnedEntityType(clrType == null ? type.Name : clrType.ShortDisplayName()));
+               if ((clrType != null
+                    && (!configurationSource.OverridesStrictly(Metadata.FindIsOwnedConfigurationSource(clrType))
+                        || (Metadata.Configuration?.GetConfigurationType(clrType) == TypeConfigurationType.OwnedEntityType
+                            && configurationSource != ConfigurationSource.Explicit)))
+                    || (entityType != null
+                        && !configurationSource.OverridesStrictly(entityType.FindOwnership()?.GetConfigurationSource())))
+                {
+                    throw new InvalidOperationException(
+                        CoreStrings.ClashingOwnedEntityType(clrType == null ? type.Name : clrType.ShortDisplayName()));
+                }
             }
 
             if (shouldBeOwned == true
@@ -194,6 +199,15 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
                 if (type.Type == null
                     || entityType.ClrType == type.Type)
                 {
+                    if (shouldBeOwned == false)
+                    {
+                        var ownership = entityType.FindOwnership();
+                        if (ownership != null)
+                        {
+                            entityType.Builder.HasNoRelationship(ownership, configurationSource);
+                        }
+                    }
+
                     entityType.UpdateConfigurationSource(configurationSource);
                     return entityType.Builder;
                 }
@@ -366,7 +380,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
             return new InternalOwnedEntityTypeBuilder();
         }
 
-        private bool ShouldBeOwnedType(in TypeIdentity type)
+        private bool IsOwned(in TypeIdentity type)
             => type.Type != null && Metadata.IsOwned(type.Type);
 
         /// <summary>
@@ -521,7 +535,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
                 return true;
             }
 
-            if (ShouldBeOwnedType(type)
+            if (IsOwned(type)
                 && configurationSource != ConfigurationSource.Explicit)
             {
                 return false;

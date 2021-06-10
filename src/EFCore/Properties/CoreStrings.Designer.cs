@@ -336,7 +336,7 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
                 ownedTypeName, ownerEntityType, navigation);
 
         /// <summary>
-        ///     The type '{entityType}' cannot be marked as owned because the derived entity type '{derivedType}' has been configured as non-owned. Either don't configure '{derivedType}' as non-owned, or call 'HasBaseType(null)' for it in 'OnModelCreating'.
+        ///     The entity type '{entityType}' cannot be marked as owned because the derived entity type '{derivedType}' has been configured as non-owned. Either don't configure '{derivedType}' as non-owned, or call 'HasBaseType(null)' for it in 'OnModelCreating'.
         /// </summary>
         public static string ClashingNonOwnedDerivedEntityType(object? entityType, object? derivedType)
             => string.Format(
@@ -344,7 +344,7 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
                 entityType, derivedType);
 
         /// <summary>
-        ///     The type '{entityType}' cannot be marked as owned because a non-owned entity type with the same name already exists.
+        ///     The entity type '{entityType}' cannot be marked as owned because a non-owned entity type with the same name already exists.
         /// </summary>
         public static string ClashingNonOwnedEntityType(object? entityType)
             => string.Format(
@@ -369,7 +369,7 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
                 entityType);
 
         /// <summary>
-        ///     The type '{entityType}' cannot be configured as non-owned because an owned entity type with the same name already exists.
+        ///     The entity type '{entityType}' cannot be configured as non-owned because an owned entity type with the same name already exists.
         /// </summary>
         public static string ClashingOwnedEntityType(object? entityType)
             => string.Format(

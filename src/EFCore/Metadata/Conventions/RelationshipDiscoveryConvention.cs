@@ -63,9 +63,9 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
             var entityType = entityTypeBuilder.Metadata;
             var model = entityType.Model;
             var relationshipCandidates = new Dictionary<IConventionEntityType, RelationshipCandidate>();
-            var ownership = entityTypeBuilder.Metadata.FindOwnership();
+            var ownership = entityType.FindOwnership();
             if (ownership == null
-                && model.IsOwned(entityTypeBuilder.Metadata.ClrType))
+                && model.IsOwned(entityType.ClrType))
             {
                 return relationshipCandidates.Values.ToList();
             }
@@ -73,24 +73,24 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
             foreach (var candidateTuple in Dependencies.MemberClassifier.GetNavigationCandidates(entityType))
             {
                 var navigationPropertyInfo = candidateTuple.Key;
-                var targetClrType = candidateTuple.Value;
+                var (targetClrType, shouldBeOwned) = candidateTuple.Value;
+                shouldBeOwned ??= model.IsOwned(targetClrType);
 
                 if (!IsCandidateNavigationProperty(entityTypeBuilder, navigationPropertyInfo.GetSimpleMemberName(), navigationPropertyInfo)
-                    || (model.IsOwned(targetClrType)
+                    || (shouldBeOwned.Value
                         && HasDeclaredAmbiguousNavigationsTo(entityType, targetClrType)))
                 {
                     continue;
                 }
 
-                IConventionEntityTypeBuilder? candidateTargetEntityTypeBuilder = ((InternalEntityTypeBuilder)entityTypeBuilder)
-                    .GetTargetEntityTypeBuilder(targetClrType, navigationPropertyInfo, ConfigurationSource.Convention);
-
+                var candidateTargetEntityTypeBuilder = TryGetTargetEntityTypeBuilder(entityTypeBuilder, targetClrType, navigationPropertyInfo);
                 if (candidateTargetEntityTypeBuilder == null)
                 {
                     continue;
                 }
 
                 var candidateTargetEntityType = candidateTargetEntityTypeBuilder.Metadata;
+                var selfRef = entityType == candidateTargetEntityType;
                 if (candidateTargetEntityType.IsKeyless)
                 {
                     continue;
@@ -111,7 +111,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
                     return Array.Empty<RelationshipCandidate>();
                 }
 
-                if (!model.IsOwned(targetClrType))
+                if (!shouldBeOwned.Value)
                 {
                     var targetOwnership = candidateTargetEntityType.FindOwnership();
                     if (targetOwnership != null
@@ -147,7 +147,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
                     foreach (var inverseCandidateTuple in inverseCandidates)
                     {
                         var inversePropertyInfo = inverseCandidateTuple.Key;
-                        var inverseTargetType = inverseCandidateTuple.Value;
+                        var inverseTargetType = inverseCandidateTuple.Value.Type;
 
                         if ((inverseTargetType != entityType.ClrType
                                 && (!inverseTargetType.IsAssignableFrom(entityType.ClrType)
@@ -157,7 +157,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
                             || (ownership != null
                                 && !candidateTargetEntityType.IsInOwnershipPath(entityType)
                                 && (candidateTargetEntityType.IsOwned()
-                                    || !model.IsOwned(targetClrType))
+                                    || !shouldBeOwned.Value)
                                 && (ownership.PrincipalEntityType != candidateTargetEntityType
                                     || ownership.PrincipalToDependent?.Name != inversePropertyInfo.GetSimpleMemberName()))
                             || !IsCandidateNavigationProperty(
@@ -191,12 +191,11 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
                     continue;
                 }
 
-                // The entity type might have been converted to a weak entity type
-                var actualTargetEntityTypeBuilder =
-                    ((InternalEntityTypeBuilder)entityTypeBuilder).GetTargetEntityTypeBuilder(
-                        relationshipCandidate.TargetTypeBuilder.Metadata.ClrType,
-                        relationshipCandidate.NavigationProperties.Single(),
-                        ConfigurationSource.Convention);
+                // The entity type might have been converted to a shared type entity type
+                var actualTargetEntityTypeBuilder = TryGetTargetEntityTypeBuilder(
+                    entityTypeBuilder,
+                    relationshipCandidate.TargetTypeBuilder.Metadata.ClrType,
+                    relationshipCandidate.NavigationProperties.Single());
 
                 if (actualTargetEntityTypeBuilder == null)
                 {
@@ -211,6 +210,22 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
 
             return candidates;
         }
+
+        /// <summary>
+        ///     Finds or tries to create an entity type target for the given navigation member.
+        /// </summary>
+        /// <param name="entityTypeBuilder"> The builder for the referencing entity type. </param>
+        /// <param name="targetClrType"> The CLR type of the target entity type. </param>
+        /// <param name="navigationMemberInfo"> The navigation member. </param>
+        /// <param name="shouldCreate"> Whether an entity type should be created if one doesn't currently exist. </param>
+        /// <returns> The builder for the target entity type or <see langword="null"/> if it can't be created. </returns>
+        protected virtual IConventionEntityTypeBuilder? TryGetTargetEntityTypeBuilder(
+            IConventionEntityTypeBuilder entityTypeBuilder,
+            Type targetClrType,
+            MemberInfo navigationMemberInfo,
+            bool shouldCreate = true)
+            => ((InternalEntityTypeBuilder)entityTypeBuilder)
+                .GetTargetEntityTypeBuilder(targetClrType, navigationMemberInfo, shouldCreate ? ConfigurationSource.Convention : null);
 
         private static IReadOnlyList<RelationshipCandidate> RemoveIncompatibleWithExistingRelationships(
             IReadOnlyList<RelationshipCandidate> relationshipCandidates,
@@ -615,9 +630,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
                     }
 
                     var targetOwned = !entityType.IsInOwnershipPath(targetEntityType)
-                        && (targetEntityType.Model.IsOwned(targetEntityType.ClrType)
-                            || (targetEntityType.HasSharedClrType
-                                && targetEntityType.Model.FindEntityTypes(targetEntityType.ClrType).Any(e => e.IsOwned())));
+                        && ShouldBeOwned(targetEntityType);
 
                     var inverse = relationshipCandidate.InverseProperties.SingleOrDefault();
                     if (inverse == null)
@@ -709,6 +722,14 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
                 }
             }
         }
+
+        /// <summary>
+        ///     Returns a value indicating whether the given entity type should be owned.
+        /// </summary>
+        /// <param name="targetEntityType"> Target entity type. </param>
+        /// <returns> <see langword="true"/> if the given entity type should be owned. </returns>
+        protected virtual bool ShouldBeOwned(IConventionEntityType targetEntityType)
+            => targetEntityType.Model.IsOwned(targetEntityType.ClrType);
 
         private void RemoveNavigation(
             PropertyInfo navigationProperty,
@@ -917,8 +938,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
             var targetClrType = ambiguousNavigation.Value.Value;
             RemoveAmbiguous(entityType, targetClrType);
 
-            var targetType = ((InternalEntityTypeBuilder)entityType.Builder)
-                .GetTargetEntityTypeBuilder(targetClrType, ambiguousNavigation.Value.Key, null)?.Metadata;
+            var targetType = TryGetTargetEntityTypeBuilder(
+                entityType.Builder, targetClrType, ambiguousNavigation.Value.Key, shouldCreate: false)?.Metadata;
             if (targetType != null)
             {
                 RemoveAmbiguous(targetType, entityType.ClrType);

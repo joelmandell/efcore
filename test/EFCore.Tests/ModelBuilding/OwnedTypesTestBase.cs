@@ -1334,6 +1334,8 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
             {
                 var modelBuilder = CreateModelBuilder();
 
+                modelBuilder.Entity<AnotherBookLabel>();
+                modelBuilder.Entity<BookLabel>();
                 modelBuilder.Entity<Book>()
                     .Ignore(b => b.AlternateLabel)
                     .Ignore(b => b.Details)
@@ -1345,7 +1347,9 @@ namespace Microsoft.EntityFrameworkCore.ModelBuilding
                         });
 
                 Assert.Equal(
-                    CoreStrings.ClashingOwnedEntityType(nameof(BookLabel)),
+                    modelBuilder.Model.IsShared(typeof(BookLabel))
+                    ? CoreStrings.ClashingSharedType(nameof(BookLabel))
+                    : CoreStrings.ClashingOwnedEntityType(nameof(BookLabel)),
                     Assert.Throws<InvalidOperationException>(
                         () => modelBuilder.Entity<AnotherBookLabel>().HasBaseType<BookLabel>()).Message);
             }

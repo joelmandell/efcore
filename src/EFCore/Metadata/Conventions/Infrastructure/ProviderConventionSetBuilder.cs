@@ -61,7 +61,6 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions.Infrastructure
             var relationshipDiscoveryConvention = new RelationshipDiscoveryConvention(Dependencies);
             var servicePropertyDiscoveryConvention = new ServicePropertyDiscoveryConvention(Dependencies);
             var indexAttributeConvention = new IndexAttributeConvention(Dependencies);
-
             var baseTypeDiscoveryConvention = new BaseTypeDiscoveryConvention(Dependencies);
             conventionSet.EntityTypeAddedConventions.Add(new NotMappedEntityTypeAttributeConvention(Dependencies));
             conventionSet.EntityTypeAddedConventions.Add(new OwnedEntityTypeAttributeConvention(Dependencies));

@@ -59,9 +59,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
                 return;
             }
 
-            var targetEntityTypeBuilder = ((InternalEntityTypeBuilder)entityTypeBuilder).GetTargetEntityTypeBuilder(
-                targetClrType, navigationMemberInfo, ConfigurationSource.DataAnnotation);
-
+            var targetEntityTypeBuilder = TryGetTargetEntityTypeBuilder(entityTypeBuilder, targetClrType, navigationMemberInfo);
             if (targetEntityTypeBuilder == null)
             {
                 return;
@@ -83,7 +81,7 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
 
             if (inverseNavigationPropertyInfo == null
                 || !Dependencies.MemberClassifier.GetNavigationCandidates(targetEntityTypeBuilder.Metadata)[inverseNavigationPropertyInfo]
-                    .IsAssignableFrom(entityType.ClrType))
+                    .Type.IsAssignableFrom(entityType.ClrType))
             {
                 throw new InvalidOperationException(
                     CoreStrings.InvalidNavigationWithInverseProperty(
@@ -385,8 +383,8 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
             InversePropertyAttribute attribute,
             IConventionContext<string> context)
         {
-            var targetEntityType = ((InternalEntityTypeBuilder)entityTypeBuilder).GetTargetEntityTypeBuilder(
-                targetClrType, navigationMemberInfo, null)?.Metadata;
+            var targetEntityType = TryGetTargetEntityTypeBuilder(entityTypeBuilder,
+                targetClrType, navigationMemberInfo, shouldCreate: false)?.Metadata;
             if (targetEntityType == null)
             {
                 return;
@@ -620,6 +618,22 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Conventions
 
         private static IConventionEntityType? FindActualEntityType(IConventionEntityType entityType)
             => ((Model)entityType.Model).FindActualEntityType((EntityType)entityType);
+
+        /// <summary>
+        ///     Finds or tries to create an entity type target for the given navigation member.
+        /// </summary>
+        /// <param name="entityTypeBuilder"> The builder for the referencing entity type. </param>
+        /// <param name="targetClrType"> The CLR type of the target entity type. </param>
+        /// <param name="navigationMemberInfo"> The navigation member. </param>
+        /// <param name="shouldCreate"> Whether an entity type should be created if one doesn't currently exist. </param>
+        /// <returns> The builder for the target entity type or <see langword="null"/> if it can't be created. </returns>
+        protected virtual IConventionEntityTypeBuilder? TryGetTargetEntityTypeBuilder(
+            IConventionEntityTypeBuilder entityTypeBuilder,
+            Type targetClrType,
+            MemberInfo navigationMemberInfo,
+            bool shouldCreate = true)
+            => ((InternalEntityTypeBuilder)entityTypeBuilder)
+                .GetTargetEntityTypeBuilder(targetClrType, navigationMemberInfo, shouldCreate ? ConfigurationSource.DataAnnotation : null);
 
         private static Dictionary<string, (MemberInfo Navigation, List<(MemberInfo, IConventionEntityType)> References)>?
             GetInverseNavigations(

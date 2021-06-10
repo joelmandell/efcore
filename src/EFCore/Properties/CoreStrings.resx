@@ -236,10 +236,10 @@
     <value>An entity type named '{ownedTypeName}' has already been added to the model. Use a different name when configuring the ownership '{ownerEntityType}.{navigation}' in 'OnModelCreating'.</value>
   </data>
   <data name="ClashingNonOwnedDerivedEntityType" xml:space="preserve">
-    <value>The type '{entityType}' cannot be marked as owned because the derived entity type '{derivedType}' has been configured as non-owned. Either don't configure '{derivedType}' as non-owned, or call 'HasBaseType(null)' for it in 'OnModelCreating'.</value>
+    <value>The entity type '{entityType}' cannot be marked as owned because the derived entity type '{derivedType}' has been configured as non-owned. Either don't configure '{derivedType}' as non-owned, or call 'HasBaseType(null)' for it in 'OnModelCreating'.</value>
   </data>
   <data name="ClashingNonOwnedEntityType" xml:space="preserve">
-    <value>The type '{entityType}' cannot be marked as owned because a non-owned entity type with the same name already exists.</value>
+    <value>The entity type '{entityType}' cannot be marked as owned because a non-owned entity type with the same name already exists.</value>
   </data>
   <data name="ClashingNonSharedType" xml:space="preserve">
     <value>The shared-type entity type '{entityType}' with CLR type '{type}' cannot be added to the model because a non-shared entity type with the same CLR type already exists.</value>
@@ -249,7 +249,7 @@
     <comment>Obsolete</comment>
   </data>
   <data name="ClashingOwnedEntityType" xml:space="preserve">
-    <value>The type '{entityType}' cannot be configured as non-owned because an owned entity type with the same name already exists.</value>
+    <value>The entity type '{entityType}' cannot be configured as non-owned because an owned entity type with the same name already exists.</value>
   </data>
   <data name="ClashingSharedType" xml:space="preserve">
     <value>The entity type '{entityType}' cannot be added to the model because its CLR type has been configured as a shared type.</value>

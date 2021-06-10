@@ -3343,9 +3343,13 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
         public virtual InternalEntityTypeBuilder? GetTargetEntityTypeBuilder(
             Type targetClrType,
             MemberInfo navigationInfo,
-            ConfigurationSource? configurationSource)
+            ConfigurationSource? configurationSource,
+            bool? targetShouldBeOwned = null)
             => GetTargetEntityTypeBuilder(
-                new TypeIdentity(targetClrType, Metadata.Model), MemberIdentity.Create(navigationInfo), configurationSource);
+                new TypeIdentity(targetClrType, Metadata.Model),
+                MemberIdentity.Create(navigationInfo),
+                configurationSource,
+                targetShouldBeOwned);
 
         /// <summary>
         ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -3373,10 +3377,12 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
                         $"Found '{existingNavigation.DeclaringEntityType.ShortName()}.{existingNavigation.Name}'. " +
                         "Owned types should only have ownership navigations point at it");
 
-                    return existingTargetType.HasSharedClrType
-                        ? ModelBuilder.SharedTypeEntity(
-                            existingTargetType.Name, existingTargetType.ClrType, configurationSource!.Value, targetShouldBeOwned)
-                        : ModelBuilder.Entity(existingTargetType.ClrType, configurationSource!.Value, targetShouldBeOwned);
+                    return configurationSource == null
+                        ? existingNavigation.TargetEntityType.Builder
+                        : existingTargetType.HasSharedClrType
+                            ? ModelBuilder.SharedTypeEntity(
+                                existingTargetType.Name, existingTargetType.ClrType, configurationSource.Value, targetShouldBeOwned)
+                            : ModelBuilder.Entity(existingTargetType.ClrType, configurationSource.Value, targetShouldBeOwned);
                 }
 
                 if (configurationSource == null
@@ -3435,36 +3441,35 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
                     return null;
             }
 
-            if (targetShouldBeOwned != true)
+            var shouldBeOwned = targetShouldBeOwned ?? Metadata.Model.IsOwned(targetType);
+            var ownership = Metadata.FindOwnership();
+            if (shouldBeOwned
+                || ownership != null)
             {
-                var ownership = Metadata.FindOwnership();
-                if (ownership != null)
+                if (targetType.Equals(Metadata.ClrType))
                 {
-                    if (targetType.Equals(Metadata.ClrType))
+                    // Avoid infinite recursion on self reference
+                    return null;
+                }
+
+                if (ownership != null
+                    && targetType.IsAssignableFrom(ownership.PrincipalEntityType.ClrType))
+                {
+                    if (configurationSource.HasValue)
                     {
-                        // Avoid infinite recursion on self reference
-                        return null;
+                        ownership.PrincipalEntityType.UpdateConfigurationSource(configurationSource.Value);
                     }
 
-                    if (targetType.IsAssignableFrom(ownership.PrincipalEntityType.ClrType))
-                    {
-                        if (configurationSource.HasValue)
-                        {
-                            ownership.PrincipalEntityType.UpdateConfigurationSource(configurationSource.Value);
-                        }
-
-                        return ownership.PrincipalEntityType.Builder;
-                    }
+                    return ownership.PrincipalEntityType.Builder;
                 }
             }
 
-            var targetTypeName = targetEntityType.IsNamed && (targetEntityType.Type != null || targetShouldBeOwned != true)
+            var targetTypeName = targetEntityType.IsNamed && (targetEntityType.Type != null || !shouldBeOwned)
                 ? targetEntityType.Name
                 : Metadata.Model.IsShared(targetType)
                     ? Metadata.GetOwnedName(targetEntityType.IsNamed ? targetEntityType.Name : targetType.ShortDisplayName(), navigation.Name!)
                     : Metadata.Model.GetDisplayName(targetType);
 
-            var shouldBeOwned = targetShouldBeOwned ?? Metadata.Model.IsOwned(targetType);
             var targetEntityTypeBuilder = ModelBuilder.Metadata.FindEntityType(targetTypeName)?.Builder;
             if (targetEntityTypeBuilder != null
                 && shouldBeOwned)
@@ -3505,40 +3510,34 @@ namespace Microsoft.EntityFrameworkCore.Metadata.Internal
                 }
             }
 
-            if (targetEntityTypeBuilder == null)
+            if (configurationSource == null)
             {
-                if (configurationSource == null)
-                {
-                    return null;
-                }
-
-                if (Metadata.Model.IsShared(targetType)
-                    || targetEntityType.IsNamed)
-                {
-                    if (shouldBeOwned != true
-                        || (!configurationSource.Overrides(ConfigurationSource.Explicit)
-                            && navigation.MemberInfo != null
-                            && Metadata.IsInOwnershipPath(targetType)))
-                    {
-                        return null;
-                    }
-
-                    targetEntityTypeBuilder = ModelBuilder.SharedTypeEntity(
-                        targetTypeName, targetType, configurationSource.Value, shouldBeOwned);
-                }
-                else
-                {
-                    targetEntityTypeBuilder = targetEntityType.IsNamed
-                        ? targetType == null
-                            ? ModelBuilder.Entity(targetTypeName, configurationSource.Value, shouldBeOwned)
-                            : ModelBuilder.SharedTypeEntity(targetTypeName, targetType, configurationSource.Value, shouldBeOwned)
-                        : ModelBuilder.Entity(targetType, configurationSource.Value, shouldBeOwned);
-                }
-
                 if (targetEntityTypeBuilder == null)
                 {
                     return null;
                 }
+            }
+            else if (Metadata.Model.IsShared(targetType)
+                    || targetEntityType.IsNamed)
+            {
+                if (!shouldBeOwned
+                    || (!configurationSource.Overrides(ConfigurationSource.Explicit)
+                        && navigation.MemberInfo != null
+                        && Metadata.IsInOwnershipPath(targetType)))
+                {
+                    return null;
+                }
+
+                targetEntityTypeBuilder = ModelBuilder.SharedTypeEntity(
+                    targetTypeName, targetType, configurationSource.Value, targetShouldBeOwned);
+            }
+            else
+            {
+                targetEntityTypeBuilder = targetEntityType.IsNamed
+                    ? targetType == null
+                        ? ModelBuilder.Entity(targetTypeName, configurationSource.Value, targetShouldBeOwned)
+                        : ModelBuilder.SharedTypeEntity(targetTypeName, targetType, configurationSource.Value, targetShouldBeOwned)
+                    : ModelBuilder.Entity(targetType, configurationSource.Value, targetShouldBeOwned);
             }
 
             return targetEntityTypeBuilder;
