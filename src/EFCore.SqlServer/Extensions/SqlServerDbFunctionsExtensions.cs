@@ -17,6 +17,25 @@ namespace Microsoft.EntityFrameworkCore;
 public static class SqlServerDbFunctionsExtensions
 {
     /// <summary>
+    ///     Counts the number of year boundaries crossed between the <paramref name="propertyReference" /> and <paramref name="pattern" />.
+    ///     Corresponds to SQL Server's <c>JSON_VALUE(@propertyReference, @pattern)</c>.
+    /// </summary>
+    /// <remarks>
+    ///     See <see href="https://aka.ms/efcore-docs-database-functions">Database functions</see>, and
+    ///     <see href="https://aka.ms/efcore-docs-sqlserver">Accessing SQL Server and SQL Azure databases with EF Core</see>
+    ///     for more information and examples.
+    /// </remarks>
+    /// <param name="_">The <see cref="DbFunctions" /> instance.</param>
+    /// <param name="propertyReference">The property in table</param>
+    /// <param name="pattern">The json path.</param>
+    /// <returns>Value of path</returns>
+    public static string JsonValue(
+        this DbFunctions _,
+        object propertyReference,
+        string pattern)
+        => throw new InvalidOperationException(CoreStrings.FunctionOnClient(nameof(SqlServerDbFunctionsExtensions.JsonValue)));
+
+    /// <summary>
     ///     A DbFunction method stub that can be used in LINQ queries to target the SQL Server <c>FREETEXT</c> store function.
     /// </summary>
     /// <remarks>
