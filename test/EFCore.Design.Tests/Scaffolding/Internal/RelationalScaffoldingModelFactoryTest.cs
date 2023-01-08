@@ -2287,6 +2287,119 @@ public class RelationalScaffoldingModelFactoryTest
     }
 
     [ConditionalFact]
+    public void Scaffold_skip_navigation_for_many_to_many_join_table_ef6()
+    {
+        var database = new DatabaseModel
+        {
+            Tables =
+            {
+                new DatabaseTable
+                {
+                    Name = "Blogs",
+                    Columns =
+                    {
+                        new DatabaseColumn { Name = "Id", StoreType = "int"  }
+                    },
+                    PrimaryKey = new DatabasePrimaryKey { Columns = { new DatabaseColumnRef("Id") } }
+                },
+                new DatabaseTable
+                {
+                    Name = "Posts",
+                    Columns =
+                    {
+                        new DatabaseColumn { Name = "Id", StoreType = "int"  }
+                    },
+                    PrimaryKey = new DatabasePrimaryKey { Columns = { new DatabaseColumnRef("Id") } }
+                },
+                new DatabaseTable
+                {
+                    Name = "PostBlogs",
+                    Columns =
+                    {
+                        new DatabaseColumn { Name = "Post_Id", StoreType = "int"  },
+                        new DatabaseColumn { Name = "Blog_Id", StoreType = "int"  }
+                    },
+                    PrimaryKey = new DatabasePrimaryKey
+                    {
+                        Columns = { new DatabaseColumnRef("Post_Id"), new DatabaseColumnRef("Blog_Id") }
+                    },
+                    ForeignKeys =
+                    {
+                        new DatabaseForeignKey
+                        {
+                            Name = "Post_Blogs_Source",
+                            Columns ={ new DatabaseColumnRef("Post_Id") },
+                            PrincipalTable = new DatabaseTableRef("Posts"),
+                            PrincipalColumns = { new DatabaseColumnRef("Id") },
+                            OnDelete = ReferentialAction.Cascade
+                        },
+                        new DatabaseForeignKey
+                        {
+                            Name = "Post_Blogs_Target",
+                            Columns ={ new DatabaseColumnRef("Blog_Id") },
+                            PrincipalTable = new DatabaseTableRef("Blogs"),
+                            PrincipalColumns = { new DatabaseColumnRef("Id") },
+                            OnDelete = ReferentialAction.Cascade
+                        }
+                    }
+                }
+            }
+        };
+
+        var model = _factory.Create(database, new ModelReverseEngineerOptions());
+
+        Assert.Collection(
+            model.GetEntityTypes().OrderBy(e => e.Name),
+            t1 =>
+            {
+                Assert.Equal("Blog", t1.Name);
+                Assert.Equal("Blogs", t1.GetTableName());
+                Assert.Empty(t1.GetDeclaredForeignKeys());
+                var skipNavigation = Assert.Single(t1.GetSkipNavigations());
+                Assert.Equal("Posts", skipNavigation.Name);
+                Assert.Equal("Blogs", skipNavigation.Inverse.Name);
+                Assert.Equal("PostBlog", skipNavigation.JoinEntityType.Name);
+                Assert.Equal("Post_Blogs_Target", skipNavigation.ForeignKey.GetConstraintName());
+            },
+            t2 =>
+            {
+                Assert.Equal("Post", t2.Name);
+                Assert.Equal("Posts", t2.GetTableName());
+                Assert.Empty(t2.GetDeclaredForeignKeys());
+                var skipNavigation = Assert.Single(t2.GetSkipNavigations());
+                Assert.Equal("Blogs", skipNavigation.Name);
+                Assert.Equal("Posts", skipNavigation.Inverse.Name);
+                Assert.Equal("PostBlog", skipNavigation.JoinEntityType.Name);
+                Assert.Equal("Post_Blogs_Source", skipNavigation.ForeignKey.GetConstraintName());
+            },
+            t3 =>
+            {
+                Assert.Equal("PostBlog", t3.Name);
+                Assert.Equal("PostBlogs", t3.GetTableName());
+                Assert.Collection(
+                    t3.GetForeignKeys().OrderBy(fk => fk.GetConstraintName()),
+                    fk1 =>
+                    {
+                        Assert.Equal("Post_Blogs_Source", fk1.GetConstraintName());
+                        var property = Assert.Single(fk1.Properties);
+                        Assert.Equal("PostId", property.Name);
+                        Assert.Equal("Post_Id", property.GetColumnName(StoreObjectIdentifier.Table(t3.GetTableName())));
+                        Assert.Equal("Post", fk1.PrincipalEntityType.Name);
+                        Assert.Equal(DeleteBehavior.Cascade, fk1.DeleteBehavior);
+                    },
+                    fk2 =>
+                    {
+                        Assert.Equal("Post_Blogs_Target", fk2.GetConstraintName());
+                        var property = Assert.Single(fk2.Properties);
+                        Assert.Equal("BlogId", property.Name);
+                        Assert.Equal("Blog_Id", property.GetColumnName(StoreObjectIdentifier.Table(t3.GetTableName())));
+                        Assert.Equal("Blog", fk2.PrincipalEntityType.Name);
+                        Assert.Equal(DeleteBehavior.Cascade, fk2.DeleteBehavior);
+                    });
+            });
+    }
+
+    [ConditionalFact]
     public void Scaffold_skip_navigation_for_many_to_many_join_table_basic()
     {
         var database = new DatabaseModel
@@ -2355,6 +2468,86 @@ public class RelationalScaffoldingModelFactoryTest
                 Assert.Empty(t3.GetNavigations());
                 var skipNavigation = Assert.Single(t3.GetSkipNavigations());
                 Assert.Equal("Blogs", skipNavigation.Name);
+                Assert.Equal("Posts", skipNavigation.Inverse.Name);
+            });
+    }
+
+    [ConditionalFact]
+    public void Scaffold_skip_navigation_for_many_to_many_join_table_unique_constraint()
+    {
+        var database = new DatabaseModel
+        {
+            Tables =
+            {
+                new DatabaseTable
+                {
+                    Name = "Blogs",
+                    Columns =
+                    {
+                        new DatabaseColumn { Name = "Id", StoreType = "int" },
+                        new DatabaseColumn { Name = "Key", StoreType = "int" }
+                    },
+                    PrimaryKey = new DatabasePrimaryKey { Columns = { new DatabaseColumnRef("Id") } },
+                    UniqueConstraints = { new DatabaseUniqueConstraint { Columns = { new DatabaseColumnRef("Key") } } }
+                },
+                new DatabaseTable
+                {
+                    Name = "Posts",
+                    Columns = { new DatabaseColumn { Name = "Id", StoreType = "int" } },
+                    PrimaryKey = new DatabasePrimaryKey { Columns = { new DatabaseColumnRef("Id") } }
+                },
+                new DatabaseTable
+                {
+                    Name = "BlogPosts",
+                    Columns =
+                    {
+                        new DatabaseColumn { Name = "BlogKey", StoreType = "int" },
+                        new DatabaseColumn { Name = "PostId", StoreType = "int" }
+                    },
+                    PrimaryKey =
+                        new DatabasePrimaryKey { Columns = { new DatabaseColumnRef("BlogKey"), new DatabaseColumnRef("PostId") } },
+                    ForeignKeys =
+                    {
+                        new DatabaseForeignKey
+                        {
+                            Columns = { new DatabaseColumnRef("BlogKey") },
+                            PrincipalColumns = { new DatabaseColumnRef("Key") },
+                            PrincipalTable = new DatabaseTableRef("Blogs"),
+                        },
+                        new DatabaseForeignKey
+                        {
+                            Columns = { new DatabaseColumnRef("PostId") },
+                            PrincipalColumns = { new DatabaseColumnRef("Id") },
+                            PrincipalTable = new DatabaseTableRef("Posts"),
+                        }
+                    }
+                }
+            }
+        };
+
+        var model = _factory.Create(database, new ModelReverseEngineerOptions());
+
+        Assert.Collection(
+            model.GetEntityTypes().OrderBy(e => e.Name),
+            t1 =>
+            {
+                Assert.Empty(t1.GetNavigations());
+                var skipNavigation = Assert.Single(t1.GetSkipNavigations());
+                Assert.Equal("Posts", skipNavigation.Name);
+                Assert.Equal("BlogKeys", skipNavigation.Inverse.Name);
+            },
+            t2 =>
+            {
+                Assert.Empty(t2.GetNavigations());
+                Assert.Equal(2, t2.GetForeignKeys().Count());
+                var fk = Assert.Single(t2.FindDeclaredForeignKeys(new[] { t2.GetProperty("BlogKey") }));
+                Assert.False(fk.PrincipalKey.IsPrimaryKey());
+            },
+            t3 =>
+            {
+                Assert.Empty(t3.GetNavigations());
+                var skipNavigation = Assert.Single(t3.GetSkipNavigations());
+                Assert.Equal("BlogKeys", skipNavigation.Name);
                 Assert.Equal("Posts", skipNavigation.Inverse.Name);
             });
     }

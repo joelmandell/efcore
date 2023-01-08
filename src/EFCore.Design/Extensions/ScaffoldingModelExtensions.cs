@@ -287,16 +287,14 @@ public static class ScaffoldingModelExtensions
         this INavigation navigation,
         IAnnotationCodeGenerator annotationCodeGenerator)
     {
-        if (navigation.IsOnDependent
-            && navigation.ForeignKey.PrincipalKey.IsPrimaryKey())
+        if (navigation.IsOnDependent)
         {
             yield return new AttributeCodeFragment(
                 typeof(ForeignKeyAttribute),
                 string.Join(", ", navigation.ForeignKey.Properties.Select(p => p.Name)));
         }
 
-        if (navigation.ForeignKey.PrincipalKey.IsPrimaryKey()
-            && navigation.Inverse != null)
+        if (navigation.Inverse != null)
         {
             yield return new AttributeCodeFragment(typeof(InversePropertyAttribute), navigation.Inverse.Name);
         }
@@ -312,14 +310,11 @@ public static class ScaffoldingModelExtensions
         this ISkipNavigation skipNavigation,
         IAnnotationCodeGenerator annotationCodeGenerator)
     {
-        if (skipNavigation.ForeignKey!.PrincipalKey.IsPrimaryKey())
-        {
-            yield return new AttributeCodeFragment(
-                typeof(ForeignKeyAttribute),
-                string.Join(", ", skipNavigation.ForeignKey.Properties.Select(p => p.Name)));
+        yield return new AttributeCodeFragment(
+            typeof(ForeignKeyAttribute),
+            string.Join(", ", skipNavigation.ForeignKey.Properties.Select(p => p.Name)));
 
-            yield return new AttributeCodeFragment(typeof(InversePropertyAttribute), skipNavigation.Inverse.Name);
-        }
+        yield return new AttributeCodeFragment(typeof(InversePropertyAttribute), skipNavigation.Inverse.Name);
     }
 
     /// <summary>
@@ -401,7 +396,8 @@ public static class ScaffoldingModelExtensions
         var toTableArguments = new List<object?>();
 
         if (explicitSchema
-            || tableName != null && tableName != entityType.GetDbSetName())
+            || tableName != null && (tableName != entityType.GetDbSetName()
+                || (entityType.IsSimpleManyToManyJoinEntityType() && tableName != entityType.ShortName())))
         {
             toTableHandledByConventions = false;
 
@@ -719,6 +715,12 @@ public static class ScaffoldingModelExtensions
 
         var hasForeignKey =
             new FluentApiCodeFragment(nameof(ReferenceReferenceBuilder.HasForeignKey)) { IsHandledByDataAnnotations = true };
+
+        // HACK: Work around issue #29448
+        if (!foreignKey.PrincipalKey.IsPrimaryKey())
+        {
+            hasForeignKey.IsHandledByDataAnnotations = false;
+        }
 
         if (foreignKey.IsUnique)
         {
