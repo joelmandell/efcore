@@ -29,7 +29,7 @@ public class SqlServerMethodCallTranslatorProvider : RelationalMethodCallTransla
                 new SqlServerConvertTranslator(sqlExpressionFactory),
                 new SqlServerDataLengthFunctionTranslator(sqlExpressionFactory),
                 new SqlServerDateDiffFunctionsTranslator(sqlExpressionFactory),
-                new SqlServerJsonValueFunctionTranslator(sqlExpressionFactory),
+                new SqlServerJsonFunctionsTranslator(sqlExpressionFactory),
                 new SqlServerDateTimeMethodTranslator(sqlExpressionFactory, typeMappingSource),
                 new SqlServerFromPartsFunctionTranslator(sqlExpressionFactory, typeMappingSource),
                 new SqlServerFullTextSearchFunctionsTranslator(sqlExpressionFactory),
