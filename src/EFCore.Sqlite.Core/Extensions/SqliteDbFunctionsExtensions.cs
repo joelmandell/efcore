@@ -30,6 +30,23 @@ public static class SqliteDbFunctionsExtensions
     public static bool Glob(this DbFunctions _, string matchExpression, string pattern)
         => throw new InvalidOperationException(CoreStrings.FunctionOnClient(nameof(Glob)));
 
+
+    /// <summary>
+    ///     Maps to the SQLite <c>json_extract</c> function, which extracts and returns one or more values from well-formed JSON.
+    /// </summary>
+    /// <remarks>
+    ///     See <see href="https://aka.ms/efcore-docs-database-functions">Database functions</see>, and
+    ///     <see href="https://aka.ms/efcore-docs-sqlite">Accessing SQLite databases with EF Core</see> for more information and examples.
+    /// </remarks>
+    /// <param name="_">The <see cref="DbFunctions" /> instance.</param>
+    /// <param name="propertyReference">The column</param>
+    /// /// <param name="paths">The column</param>
+    /// <returns>A hexadecimal string.</returns>
+    public static string JsonExtract(this DbFunctions _,
+        object propertyReference,
+        string paths)
+        => throw new InvalidOperationException(CoreStrings.FunctionOnClient(nameof(JsonExtract)));
+
     /// <summary>
     ///     Maps to the SQLite <c>hex</c> function which returns a hexadecimal string representing the specified value.
     /// </summary>
