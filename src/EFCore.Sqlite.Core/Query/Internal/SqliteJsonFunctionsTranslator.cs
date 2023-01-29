@@ -18,7 +18,7 @@ public class SqliteJsonFunctionsTranslator : IMethodCallTranslator
         = new()
         {
             {
-                typeof(SqliteDbFunctionsExtensions).GetRuntimeMethod(nameof(SqliteDbFunctionsExtensions.JsonExtract), new[] { typeof(DbFunctions), typeof(object), typeof(string) })!,
+                typeof(SqliteDbFunctionsExtensions).GetRuntimeMethod(nameof(SqliteDbFunctionsExtensions.JsonExtract), new[] { typeof(DbFunctions), typeof(object), typeof(string[]) })!,
                 "json_extract"
             }
         };
@@ -56,11 +56,23 @@ public class SqliteJsonFunctionsTranslator : IMethodCallTranslator
 
             var typeMapping = expression.TypeMapping;
 
-            var path = expression.Type == arguments[2].Type
+            var paths = expression.Type == arguments[2].Type
                         ? _sqlExpressionFactory.ApplyTypeMapping(arguments[2], typeMapping)
                         : _sqlExpressionFactory.ApplyDefaultTypeMapping(arguments[2]);
 
-            var functionArguments = new List<SqlExpression> { expression, path };
+            var functionArguments = new List<SqlExpression> { expression };
+
+            var pathValue = ((SqlConstantExpression)paths)?.Value;
+
+            if (pathValue?.GetType() == typeof(string[]))
+            {
+                var constantValues = pathValue is not null ? (string[])pathValue : Array.Empty<string>();
+
+                foreach (var path in constantValues)
+                {
+                    functionArguments.Add(_sqlExpressionFactory.Constant(path));
+                }
+            }
 
             return _sqlExpressionFactory.Function(
                 function,

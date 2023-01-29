@@ -27,12 +27,12 @@ public class JsonFunctionSqliteTest
             var _ = async ? await ctx.SaveChangesAsync() : ctx.SaveChanges();
         }
 
-        var actual = ctx.JsonEntitiesBasicString.Select(c => new { JNumber = EF.Functions.JsonExtract(c.OwnedReferenceRoot, "$.Number") });
+        var actual = ctx.JsonEntitiesBasicString.Select(c => new { Result = EF.Functions.JsonExtract(c.OwnedReferenceRoot, "$.Number", "$.Name") });
 
         var result = async ? await actual.ToListAsync() : actual.ToList();
         var queryString = actual.ToQueryString();
 
-        Assert.Equal("10", result.FirstOrDefault()?.JNumber);
+        Assert.Equal($@"[10,""e1_r""]", result.FirstOrDefault()?.Result);
     }
 
     public static IEnumerable<object[]> IsAsyncData = new[] { new object[] { false }, new object[] { true } };
