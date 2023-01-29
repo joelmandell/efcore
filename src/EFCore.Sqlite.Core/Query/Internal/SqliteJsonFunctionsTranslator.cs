@@ -54,11 +54,7 @@ public class SqliteJsonFunctionsTranslator : IMethodCallTranslator
         {
             var expression = arguments[1];
 
-            var typeMapping = expression.TypeMapping;
-
-            var paths = expression.Type == arguments[2].Type
-                        ? _sqlExpressionFactory.ApplyTypeMapping(arguments[2], typeMapping)
-                        : _sqlExpressionFactory.ApplyDefaultTypeMapping(arguments[2]);
+            var paths = arguments[2];
 
             var functionArguments = new List<SqlExpression> { expression };
 
@@ -78,8 +74,7 @@ public class SqliteJsonFunctionsTranslator : IMethodCallTranslator
                 function,
                 functionArguments,
                 nullable: true,
-                // TODO: don't propagate for now
-                argumentsPropagateNullability: functionArguments.Select(_ => false).ToList(),
+                argumentsPropagateNullability: functionArguments.Select(_ => true).ToList(),
                 typeof(string));
         }
 
