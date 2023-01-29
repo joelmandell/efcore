@@ -39,12 +39,13 @@ public static class SqliteDbFunctionsExtensions
     ///     <see href="https://aka.ms/efcore-docs-sqlite">Accessing SQLite databases with EF Core</see> for more information and examples.
     /// </remarks>
     /// <param name="_">The <see cref="DbFunctions" /> instance.</param>
-    /// <param name="propertyReference">The column</param>
-    /// /// <param name="paths">The column</param>
-    /// <returns>A hexadecimal string.</returns>
+    /// <param name="expression">The json</param>
+    /// <param name="paths">The paths</param>
+    /// <returns>One or more values from the well-formed JSON.</returns>
+    /// <seealso href="https://www.sqlite.org/json1.html#the_json_extract_function">SQLite documentation for <c>json_extract</c>.</seealso>
     public static string JsonExtract(this DbFunctions _,
-        object propertyReference,
-        string paths)
+        object expression,
+        params string[] paths)
         => throw new InvalidOperationException(CoreStrings.FunctionOnClient(nameof(JsonExtract)));
 
     /// <summary>
