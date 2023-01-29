@@ -56,14 +56,14 @@ public class SqlServerJsonFunctionsTranslator : IMethodCallTranslator
     {
         if (_methodInfoJsonFunctions.TryGetValue(method, out var function))
         {
-            var propertyReference = arguments[1];
+            var expression = arguments[1];
 
-            var typeMapping = propertyReference.TypeMapping;
-            var path = propertyReference.Type == arguments[2].Type
+            var typeMapping = expression.TypeMapping;
+            var path = expression.Type == arguments[2].Type
                 ? _sqlExpressionFactory.ApplyTypeMapping(arguments[2], typeMapping)
                 : _sqlExpressionFactory.ApplyDefaultTypeMapping(arguments[2]);
 
-            var functionArguments = new List<SqlExpression> { propertyReference, path };
+            var functionArguments = new List<SqlExpression> { expression, path };
 
             return _sqlExpressionFactory.Function(
                 function,
