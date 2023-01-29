@@ -58,10 +58,10 @@ public class SqlServerJsonFunctionsTranslator : IMethodCallTranslator
         {
             var expression = arguments[1];
 
-            var typeMapping = expression.TypeMapping;
-            var path = expression.Type == arguments[2].Type
-                ? _sqlExpressionFactory.ApplyTypeMapping(arguments[2], typeMapping)
-                : _sqlExpressionFactory.ApplyDefaultTypeMapping(arguments[2]);
+            var path = arguments[2];
+
+            //Do not allow null as path arg. Pass '$' as default path.
+            if (((SqlConstantExpression)path).Value == null) path = _sqlExpressionFactory.Constant("$");
 
             var functionArguments = new List<SqlExpression> { expression, path };
 
@@ -69,8 +69,7 @@ public class SqlServerJsonFunctionsTranslator : IMethodCallTranslator
                 function,
                 functionArguments,
                 nullable: true,
-                // TODO: don't propagate for now
-                argumentsPropagateNullability: functionArguments.Select(_ => false).ToList(),
+                argumentsPropagateNullability: functionArguments.Select(_ => true).ToList(),
                 typeof(string));
         }
 
