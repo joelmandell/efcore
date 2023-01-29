@@ -54,6 +54,14 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
             => GetString("CannotChangeWhenOpen");
 
         /// <summary>
+        ///     Can't configure a trigger on entity type '{entityType}', which is in a TPH hierarchy and isn't the root. Configure the trigger on the TPH root entity type '{rootEntityType}' instead.
+        /// </summary>
+        public static string CannotConfigureTriggerNonRootTphEntity(object? entityType, object? rootEntityType)
+            => string.Format(
+                GetString("CannotConfigureTriggerNonRootTphEntity", nameof(entityType), nameof(rootEntityType)),
+                entityType, rootEntityType);
+
+        /// <summary>
         ///     Unable to translate the given 'GroupBy' pattern. Call 'AsEnumerable' before 'GroupBy' to evaluate it client-side.
         /// </summary>
         public static string ClientGroupByNotSupported
@@ -1286,6 +1294,14 @@ namespace Microsoft.EntityFrameworkCore.Diagnostics
         /// </summary>
         public static string NoDbCommand
             => GetString("NoDbCommand");
+
+        /// <summary>
+        ///     Expression of type '{type}' isn't supported as the Values of an InExpression; only constants and parameters are supported.
+        /// </summary>
+        public static string NonConstantOrParameterAsInExpressionValues(object? type)
+            => string.Format(
+                GetString("NonConstantOrParameterAsInExpressionValues", nameof(type)),
+                type);
 
         /// <summary>
         ///     'FindMapping' was called on a 'RelationalTypeMappingSource' with a non-relational 'TypeMappingInfo'.

@@ -25,9 +25,10 @@ public class JsonQueryContext : DbContext
     {
         var jsonEntitiesBasic = JsonQueryData.CreateJsonEntitiesBasic();
         var jsonEntitiesBasicStrings = JsonQueryData.CreateJsonEntitiesBasicString();
+        var entitiesBasic = JsonQueryData.CreateEntitiesBasic();
         var jsonEntitiesBasicForReference = JsonQueryData.CreateJsonEntitiesBasicForReference();
         var jsonEntitiesBasicForCollection = JsonQueryData.CreateJsonEntitiesBasicForCollection();
-        JsonQueryData.WireUp(jsonEntitiesBasic, jsonEntitiesBasicForReference, jsonEntitiesBasicForCollection);
+        JsonQueryData.WireUp(jsonEntitiesBasic, entitiesBasic, jsonEntitiesBasicForReference, jsonEntitiesBasicForCollection);
 
         var jsonEntitiesCustomNaming = JsonQueryData.CreateJsonEntitiesCustomNaming();
         var jsonEntitiesSingleOwned = JsonQueryData.CreateJsonEntitiesSingleOwned();
@@ -36,6 +37,7 @@ public class JsonQueryContext : DbContext
 
         context.JsonEntitiesBasic.AddRange(jsonEntitiesBasic);
         context.JsonEntitiesBasicString.AddRange(jsonEntitiesBasicStrings);
+        context.EntitiesBasic.AddRange(entitiesBasic);
         context.JsonEntitiesBasicForReference.AddRange(jsonEntitiesBasicForReference);
         context.JsonEntitiesBasicForCollection.AddRange(jsonEntitiesBasicForCollection);
         context.JsonEntitiesCustomNaming.AddRange(jsonEntitiesCustomNaming);
