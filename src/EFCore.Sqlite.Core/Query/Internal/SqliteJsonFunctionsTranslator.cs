@@ -13,7 +13,6 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Query.Internal;
 /// </summary>
 public class SqliteJsonFunctionsTranslator : IMethodCallTranslator
 {
-
     private readonly Dictionary<MethodInfo, string> _methodInfoJsonFunctions
         = new()
         {
@@ -53,11 +52,8 @@ public class SqliteJsonFunctionsTranslator : IMethodCallTranslator
         if (_methodInfoJsonFunctions.TryGetValue(method, out var function))
         {
             var expression = arguments[1];
-
             var paths = arguments[2];
-
             var functionArguments = new List<SqlExpression> { expression };
-
             var pathValue = ((SqlConstantExpression)paths)?.Value;
 
             if (pathValue?.GetType() == typeof(string[]))

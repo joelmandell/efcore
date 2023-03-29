@@ -13,8 +13,7 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.Internal;
 /// </summary>
 public class SqlServerJsonFunctionsTranslator : IMethodCallTranslator
 {
-
-    private readonly Dictionary<MethodInfo, string> _methodInfoJsonFunctions
+    private static readonly Dictionary<MethodInfo, string> _methodInfoJsonFunctions
         = new()
         {
             {
@@ -57,7 +56,6 @@ public class SqlServerJsonFunctionsTranslator : IMethodCallTranslator
         if (_methodInfoJsonFunctions.TryGetValue(method, out var function))
         {
             var expression = arguments[1];
-
             var path = arguments[2];
 
             //Do not allow null as path arg. Pass '$' as default path.

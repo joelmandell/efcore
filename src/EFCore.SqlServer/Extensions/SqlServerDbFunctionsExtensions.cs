@@ -2447,10 +2447,7 @@ public static class SqlServerDbFunctionsExtensions
     /// <param name="path">A JSON path that specifies the property to extract.</param>
     /// <returns>A single text value.</returns>
     /// <seealso href="https://learn.microsoft.com/sql/t-sql/functions/json-value-transact-sql">SQL Server documentation for <c>JSON_VALUE</c>.</seealso>
-    public static string JsonValue(
-        this DbFunctions _,
-        object expression,
-        string path)
+    public static string JsonValue(this DbFunctions _, object expression, string path)
         => throw new InvalidOperationException(CoreStrings.FunctionOnClient(nameof(SqlServerDbFunctionsExtensions.JsonValue)));
 
     /// <summary>
@@ -2467,9 +2464,6 @@ public static class SqlServerDbFunctionsExtensions
     /// <param name="path">A JSON path that specifies the object or the array to extract.</param>
     /// <returns>Returns a JSON fragment of type nvarchar(max).</returns>
     /// <seealso href="https://learn.microsoft.com/sv-se/sql/t-sql/functions/json-query-transact-sql">SQL Server documentation for <c>JSON_QUERY</c>.</seealso>
-    public static string JsonQuery(
-        this DbFunctions _,
-        object expression,
-        string path)
+    public static string JsonQuery(this DbFunctions _, object expression, string path)
         => throw new InvalidOperationException(CoreStrings.FunctionOnClient(nameof(SqlServerDbFunctionsExtensions.JsonQuery)));
 }
