@@ -43,9 +43,7 @@ public static class SqliteDbFunctionsExtensions
     /// <param name="paths">The paths</param>
     /// <returns>One or more values from the well-formed JSON.</returns>
     /// <seealso href="https://www.sqlite.org/json1.html#the_json_extract_function">SQLite documentation for <c>json_extract</c>.</seealso>
-    public static string JsonExtract(this DbFunctions _,
-        object expression,
-        params string[] paths)
+    public static string JsonExtract(this DbFunctions _, object expression, params string[] paths)
         => throw new InvalidOperationException(CoreStrings.FunctionOnClient(nameof(JsonExtract)));
 
     /// <summary>
