@@ -13,7 +13,6 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Query.Internal;
 /// </summary>
 public class SqliteJsonFunctionsTranslator : IMethodCallTranslator
 {
-
     private readonly Dictionary<MethodInfo, string> _methodInfoJsonFunctions
         = new()
         {
