@@ -45,7 +45,8 @@ public class EntityTypeConfigurationAttributeConventionTest
     {
     }
 
-    [EntityTypeConfiguration(typeof(UserConfiguration))]
+    //[EntityTypeConfiguration(typeof(UserConfiguration))]
+    [EntityTypeConfiguration<UserConfiguration>]
     private class User
     {
         public int Id { get; set; }

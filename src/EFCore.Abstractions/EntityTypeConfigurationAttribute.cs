@@ -32,3 +32,26 @@ public sealed class EntityTypeConfigurationAttribute : Attribute
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.Interfaces)]
     public Type EntityTypeConfigurationType { get; }
 }
+
+/// <summary>
+/// tet
+/// </summary>
+/// <typeparam name="T">et</typeparam>
+[AttributeUsage(AttributeTargets.Class)]
+public sealed class EntityTypeConfigurationAttribute<T> : Attribute
+{
+    /// <summary>
+    /// ff
+    /// </summary>
+    public EntityTypeConfigurationAttribute()
+    {
+        Check.NotNull(typeof(T), nameof(T));
+        EntityTypeConfigurationType = typeof(T);
+    }
+
+    /// <summary>
+    ///     Type of the entity type configuration.
+    /// </summary>
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.Interfaces)]
+    public Type EntityTypeConfigurationType { get; }
+}
