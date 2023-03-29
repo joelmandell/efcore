@@ -294,11 +294,11 @@ public class ModificationCommand : IModificationCommand, INonTrackedModification
 
         if (jsonEntry)
         {
-            var jsonColumnsUpdateMap = new Dictionary<string, JsonPartialUpdateInfo>();
+            var jsonColumnsUpdateMap = new Dictionary<IColumn, JsonPartialUpdateInfo>();
             var processedEntries = new List<IUpdateEntry>();
             foreach (var entry in _entries.Where(e => e.EntityType.IsMappedToJson()))
             {
-                var jsonColumn = entry.EntityType.GetContainerColumnName()!;
+                var jsonColumn = GetTableMapping(entry.EntityType)!.Table.FindColumn(entry.EntityType.GetContainerColumnName()!)!;
                 var jsonPartialUpdateInfo = FindJsonPartialUpdateInfo(entry, processedEntries);
 
                 if (jsonPartialUpdateInfo == null)
@@ -316,21 +316,21 @@ public class ModificationCommand : IModificationCommand, INonTrackedModification
                 jsonColumnsUpdateMap[jsonColumn] = jsonPartialUpdateInfo;
             }
 
-            foreach (var (jsonColumnName, updateInfo) in jsonColumnsUpdateMap)
+            foreach (var (jsonColumn, updateInfo) in jsonColumnsUpdateMap)
             {
                 var finalUpdatePathElement = updateInfo.Path.Last();
                 var navigation = finalUpdatePathElement.Navigation;
-
-                var jsonColumnTypeMapping = navigation.TargetEntityType.GetContainerColumnTypeMapping()!;
+                var jsonColumnTypeMapping = jsonColumn.StoreTypeMapping;
                 var navigationValue = finalUpdatePathElement.ParentEntry.GetCurrentValue(navigation);
 
                 var json = default(JsonNode?);
                 var jsonPathString = string.Join(
                     ".", updateInfo.Path.Select(x => x.PropertyName + (x.Ordinal != null ? "[" + x.Ordinal + "]" : "")));
 
+                object? singlePropertyValue = default;
                 if (updateInfo.Property != null)
                 {
-                    json = new JsonArray(JsonValue.Create(updateInfo.PropertyValue));
+                    singlePropertyValue = GenerateValueForSinglePropertyUpdate(updateInfo.Property, updateInfo.PropertyValue);
                     jsonPathString = jsonPathString + "." + updateInfo.Property.GetJsonPropertyName();
                 }
                 else
@@ -367,8 +367,8 @@ public class ModificationCommand : IModificationCommand, INonTrackedModification
                 }
 
                 var columnModificationParameters = new ColumnModificationParameters(
-                    jsonColumnName,
-                    value: json?.ToJsonString(),
+                    jsonColumn.Name,
+                    value: updateInfo.Property != null ? singlePropertyValue : json?.ToJsonString(),
                     property: updateInfo.Property,
                     columnType: jsonColumnTypeMapping.StoreType,
                     jsonColumnTypeMapping,
@@ -693,10 +693,29 @@ public class ModificationCommand : IModificationCommand, INonTrackedModification
                 }
             }
 
-            Debug.Assert(result.Path.Count > 0, "Common denominator should always have at least one node - the root.");
+            Check.DebugAssert(result.Path.Count > 0, "Common denominator should always have at least one node - the root.");
 
             return result;
         }
+    }
+
+    /// <summary>
+    ///     Generates value to use for update in case a single property is being updated.
+    /// </summary>
+    /// <param name="property">Property to be updated.</param>
+    /// <param name="propertyValue">Value object that the property will be updated to.</param>
+    /// <returns>Value that the property will be updated to.</returns>
+    [EntityFrameworkInternal]
+    protected virtual object? GenerateValueForSinglePropertyUpdate(IProperty property, object? propertyValue)
+    {
+        var propertyProviderClrType = (property.GetTypeMapping().Converter?.ProviderClrType ?? property.ClrType).UnwrapNullableType();
+
+        return (propertyProviderClrType == typeof(DateTime)
+            || propertyProviderClrType == typeof(DateTimeOffset)
+            || propertyProviderClrType == typeof(TimeSpan)
+            || propertyProviderClrType == typeof(Guid))
+            ? JsonValue.Create(propertyValue)?.ToJsonString().Replace("\"", "")
+            : propertyValue;
     }
 
     private JsonNode? CreateJson(object? navigationValue, IUpdateEntry parentEntry, IEntityType entityType, int? ordinal, bool isCollection)
@@ -898,7 +917,6 @@ public class ModificationCommand : IModificationCommand, INonTrackedModification
         for (var columnIndex = 0; columnIndex < columnCount; columnIndex++)
         {
             var columnModification = ColumnModifications[columnIndex];
-
             if (columnModification.Property is null
                 || !columnModification.IsRead
                 || columnModification.Column is not IStoreStoredProcedureParameter storedProcedureParameter)
@@ -911,7 +929,7 @@ public class ModificationCommand : IModificationCommand, INonTrackedModification
                 "Readable column modification has a stored procedure parameter with direction Input");
             Check.DebugAssert(
                 columnModification.ParameterName is not null,
-                "Readable column modification has an stored procedure parameter without a name");
+                "Readable column modification has a stored procedure parameter without a name");
 
             columnModification.Value = parameterCollection[baseParameterIndex + storedProcedureParameter.Position].Value;
         }

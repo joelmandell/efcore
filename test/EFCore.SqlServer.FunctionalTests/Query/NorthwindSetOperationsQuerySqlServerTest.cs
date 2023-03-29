@@ -1317,6 +1317,103 @@ WHERE [c0].[ContactTitle] = N'Owner'
         AssertSql();
     }
 
+    public override async Task Concat_with_pruning(bool async)
+    {
+        await base.Concat_with_pruning(async);
+
+        AssertSql(
+"""
+SELECT [c].[City]
+FROM [Customers] AS [c]
+WHERE [c].[CustomerID] LIKE N'A%'
+UNION ALL
+SELECT [c0].[City]
+FROM [Customers] AS [c0]
+WHERE [c0].[CustomerID] LIKE N'B%'
+""");
+    }
+
+    public override async Task Concat_with_distinct_on_one_source_and_pruning(bool async)
+    {
+        await base.Concat_with_distinct_on_one_source_and_pruning(async);
+
+        AssertSql(
+"""
+SELECT [t].[City]
+FROM (
+    SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
+    FROM [Customers] AS [c]
+    WHERE [c].[CustomerID] LIKE N'A%'
+    UNION ALL
+    SELECT DISTINCT [c0].[CustomerID], [c0].[Address], [c0].[City], [c0].[CompanyName], [c0].[ContactName], [c0].[ContactTitle], [c0].[Country], [c0].[Fax], [c0].[Phone], [c0].[PostalCode], [c0].[Region]
+    FROM [Customers] AS [c0]
+    WHERE [c0].[CustomerID] LIKE N'B%'
+) AS [t]
+""");
+    }
+
+    public override async Task Concat_with_distinct_on_both_source_and_pruning(bool async)
+    {
+        await base.Concat_with_distinct_on_both_source_and_pruning(async);
+
+        AssertSql(
+"""
+SELECT [t].[City]
+FROM (
+    SELECT DISTINCT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
+    FROM [Customers] AS [c]
+    WHERE [c].[CustomerID] LIKE N'A%'
+    UNION ALL
+    SELECT DISTINCT [c0].[CustomerID], [c0].[Address], [c0].[City], [c0].[CompanyName], [c0].[ContactName], [c0].[ContactTitle], [c0].[Country], [c0].[Fax], [c0].[Phone], [c0].[PostalCode], [c0].[Region]
+    FROM [Customers] AS [c0]
+    WHERE [c0].[CustomerID] LIKE N'B%'
+) AS [t]
+""");
+    }
+
+    public override async Task Nested_concat_with_pruning(bool async)
+    {
+        await base.Nested_concat_with_pruning(async);
+
+        AssertSql(
+"""
+SELECT [c].[City]
+FROM [Customers] AS [c]
+WHERE [c].[CustomerID] LIKE N'A%'
+UNION ALL
+SELECT [c0].[City]
+FROM [Customers] AS [c0]
+WHERE [c0].[CustomerID] LIKE N'B%'
+UNION ALL
+SELECT [c1].[City]
+FROM [Customers] AS [c1]
+WHERE [c1].[CustomerID] LIKE N'A%'
+""");
+    }
+
+    public override async Task Nested_concat_with_distinct_in_the_middle_and_pruning(bool async)
+    {
+        await base.Nested_concat_with_distinct_in_the_middle_and_pruning(async);
+
+        AssertSql(
+"""
+SELECT [t].[City]
+FROM (
+    SELECT [c].[CustomerID], [c].[Address], [c].[City], [c].[CompanyName], [c].[ContactName], [c].[ContactTitle], [c].[Country], [c].[Fax], [c].[Phone], [c].[PostalCode], [c].[Region]
+    FROM [Customers] AS [c]
+    WHERE [c].[CustomerID] LIKE N'A%'
+    UNION ALL
+    SELECT DISTINCT [c0].[CustomerID], [c0].[Address], [c0].[City], [c0].[CompanyName], [c0].[ContactName], [c0].[ContactTitle], [c0].[Country], [c0].[Fax], [c0].[Phone], [c0].[PostalCode], [c0].[Region]
+    FROM [Customers] AS [c0]
+    WHERE [c0].[CustomerID] LIKE N'B%'
+) AS [t]
+UNION ALL
+SELECT [c1].[City]
+FROM [Customers] AS [c1]
+WHERE [c1].[CustomerID] LIKE N'A%'
+""");
+    }
+
     public override async Task Client_eval_Union_FirstOrDefault(bool async)
     {
         // Client evaluation in projection. Issue #16243.
@@ -1330,21 +1427,27 @@ WHERE [c0].[ContactTitle] = N'Owner'
 
     [ConditionalTheory]
     [MemberData(nameof(IsAsyncData))]
-    public virtual async Task Union_with_different_store_types_throws(bool async)
+    public virtual async Task Union_with_different_store_types_is_fine_if_database_can_translate_it(bool async)
     {
-        AssertEqual(
-            RelationalStrings.SetOperationsOnDifferentStoreTypes,
-            (await Assert.ThrowsAsync<InvalidOperationException>(
-                () => AssertQuery(
-                    async,
-                    ss => ss.Set<Customer>()
-                        .Select(e => e.CompanyName)
-                        .Union(ss.Set<Customer>().Select(e => e.ContactName))))).Message);
+        await AssertQuery(
+            async,
+            ss => ss.Set<Customer>()
+                .Select(e => e.CompanyName)
+                .Union(ss.Set<Customer>().Select(e => e.ContactName)));
+
+        AssertSql(
+"""
+SELECT [c].[CompanyName]
+FROM [Customers] AS [c]
+UNION
+SELECT [c0].[ContactName] AS [CompanyName]
+FROM [Customers] AS [c0]
+""");
     }
 
     [ConditionalTheory] // Issue #29020
     [MemberData(nameof(IsAsyncData))]
-    public virtual async Task Union_with_store_types_differing_only_by_case(bool async)
+    public virtual async Task Union_with_type_mappings_to_same_store_type(bool async)
     {
         await AssertQuery(
             async,

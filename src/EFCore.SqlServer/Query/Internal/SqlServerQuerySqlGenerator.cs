@@ -1,7 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-using System.Text.Json;
 using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Microsoft.EntityFrameworkCore.SqlServer.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal;
@@ -78,6 +77,21 @@ public class SqlServerQuerySqlGenerator : QuerySqlGenerator
     ///     any release. You should only use it directly in your code with extreme caution and knowing that
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
+    protected override void GenerateEmptyProjection(SelectExpression selectExpression)
+    {
+        base.GenerateEmptyProjection(selectExpression);
+        if (selectExpression.Alias != null)
+        {
+            Sql.Append(" AS empty");
+        }
+    }
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
     protected override Expression VisitUpdate(UpdateExpression updateExpression)
     {
         var selectExpression = updateExpression.SelectExpression;
@@ -122,21 +136,6 @@ public class SqlServerQuerySqlGenerator : QuerySqlGenerator
 
         throw new InvalidOperationException(
             RelationalStrings.ExecuteOperationWithUnsupportedOperatorInSqlGeneration(nameof(RelationalQueryableExtensions.ExecuteUpdate)));
-    }
-
-    /// <summary>
-    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
-    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
-    ///     any release. You should only use it directly in your code with extreme caution and knowing that
-    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
-    /// </summary>
-    protected override void GenerateEmptyProjection(SelectExpression selectExpression)
-    {
-        base.GenerateEmptyProjection(selectExpression);
-        if (selectExpression.Alias != null)
-        {
-            Sql.Append(" AS empty");
-        }
     }
 
     /// <summary>
@@ -311,7 +310,12 @@ public class SqlServerQuerySqlGenerator : QuerySqlGenerator
         return base.VisitExtension(extensionExpression);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
     protected override Expression VisitJsonScalar(JsonScalarExpression jsonScalarExpression)
     {
         if (jsonScalarExpression.Path.Count == 1
@@ -336,7 +340,7 @@ public class SqlServerQuerySqlGenerator : QuerySqlGenerator
 
         Visit(jsonScalarExpression.JsonColumn);
 
-        Sql.Append(",'");
+        Sql.Append(", '");
         foreach (var pathSegment in jsonScalarExpression.Path)
         {
             if (pathSegment.PropertyName != null)
@@ -386,6 +390,62 @@ public class SqlServerQuerySqlGenerator : QuerySqlGenerator
         {
             throw new InvalidOperationException(RelationalStrings.FromSqlNonComposable);
         }
+    }
+
+    /// <summary>
+    ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
+    ///     the same compatibility standards as public APIs. It may be changed or removed without notice in
+    ///     any release. You should only use it directly in your code with extreme caution and knowing that
+    ///     doing so can result in application failures when updating to a new Entity Framework Core release.
+    /// </summary>
+    protected override bool TryGetOperatorInfo(SqlExpression expression, out int precedence, out bool isAssociative)
+    {
+        // See https://docs.microsoft.com/sql/t-sql/language-elements/operator-precedence-transact-sql, although that list is very partial
+        (precedence, isAssociative) = expression switch
+        {
+            SqlBinaryExpression sqlBinaryExpression => sqlBinaryExpression.OperatorType switch
+            {
+                ExpressionType.Multiply => (900, true),
+                ExpressionType.Divide => (900, false),
+                ExpressionType.Modulo => (900, false),
+                ExpressionType.Add => (800, true),
+                ExpressionType.Subtract => (800, false),
+                ExpressionType.And => (700, true),
+                ExpressionType.Or => (700, true),
+                ExpressionType.LeftShift => (700, true),
+                ExpressionType.RightShift => (700, true),
+                ExpressionType.LessThan => (600, false),
+                ExpressionType.LessThanOrEqual => (600, false),
+                ExpressionType.GreaterThan => (600, false),
+                ExpressionType.GreaterThanOrEqual => (600, false),
+                ExpressionType.Equal => (500, false),
+                ExpressionType.NotEqual => (500, false),
+                ExpressionType.AndAlso => (200, true),
+                ExpressionType.OrElse => (100, true),
+
+                _ => default,
+            },
+
+            SqlUnaryExpression sqlUnaryExpression => sqlUnaryExpression.OperatorType switch
+            {
+                ExpressionType.Convert => (1300, false),
+                ExpressionType.Not when sqlUnaryExpression.Type != typeof(bool) => (1200, false),
+                ExpressionType.Negate => (1100, false),
+                ExpressionType.Equal => (500, false), // IS NULL
+                ExpressionType.NotEqual => (500, false), // IS NOT NULL
+                ExpressionType.Not when sqlUnaryExpression.Type == typeof(bool) => (300, false),
+
+                _ => default,
+            },
+
+            CollateExpression => (900, false),
+            LikeExpression => (350, false),
+            AtTimeZoneExpression => (1200, false),
+
+            _ => default,
+        };
+
+        return precedence != default;
     }
 
     private void GenerateList<T>(

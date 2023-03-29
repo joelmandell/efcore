@@ -142,8 +142,7 @@ public class SqlServerUpdateSqlGenerator : UpdateAndSelectSqlGenerator, ISqlServ
         string name,
         string? schema)
     {
-        if (columnModification.JsonPath != null
-            && columnModification.JsonPath != "$")
+        if (columnModification.JsonPath is not (null or "$"))
         {
             stringBuilder.Append("JSON_MODIFY(");
             updateSqlGeneratorHelper.DelimitIdentifier(stringBuilder, columnModification.ColumnName);
@@ -155,17 +154,17 @@ public class SqlServerUpdateSqlGenerator : UpdateAndSelectSqlGenerator, ISqlServ
 
             if (columnModification.Property != null)
             {
-                var needsTypeConversion = columnModification.Property.ClrType.IsNumeric()
-                    || columnModification.Property.ClrType == typeof(bool);
+                var propertyClrType = columnModification.Property.GetTypeMapping().Converter?.ProviderClrType
+                    ?? columnModification.Property.ClrType;
+
+                var needsTypeConversion = propertyClrType.IsNumeric() || propertyClrType == typeof(bool);
 
                 if (needsTypeConversion)
                 {
                     stringBuilder.Append("CAST(");
                 }
 
-                stringBuilder.Append("JSON_VALUE(");
                 base.AppendUpdateColumnValue(updateSqlGeneratorHelper, columnModification, stringBuilder, name, schema);
-                stringBuilder.Append(", '$[0]')");
 
                 if (needsTypeConversion)
                 {

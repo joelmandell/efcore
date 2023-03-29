@@ -13,13 +13,13 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Storage.Internal;
 /// </summary>
 public class SqlServerJsonTypeMapping : JsonTypeMapping
 {
-    private static readonly MethodInfo _getStringMethod
+    private static readonly MethodInfo GetStringMethod
         = typeof(DbDataReader).GetRuntimeMethod(nameof(DbDataReader.GetString), new[] { typeof(int) })!;
 
-    private static readonly MethodInfo _jsonDocumentParseMethod
+    private static readonly MethodInfo JsonDocumentParseMethod
         = typeof(JsonDocument).GetRuntimeMethod(nameof(JsonDocument.Parse), new[] { typeof(string), typeof(JsonDocumentOptions) })!;
 
-    private static readonly MemberInfo _jsonDocumentRootElementMember
+    private static readonly MemberInfo JsonDocumentRootElementMember
         = typeof(JsonDocument).GetRuntimeProperty(nameof(JsonDocument.RootElement))!;
 
     /// <summary>
@@ -40,7 +40,7 @@ public class SqlServerJsonTypeMapping : JsonTypeMapping
     ///     doing so can result in application failures when updating to a new Entity Framework Core release.
     /// </summary>
     public override MethodInfo GetDataReaderMethod()
-        => _getStringMethod;
+        => GetStringMethod;
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to
@@ -51,10 +51,10 @@ public class SqlServerJsonTypeMapping : JsonTypeMapping
     public override Expression CustomizeDataReaderExpression(Expression expression)
         => Expression.MakeMemberAccess(
             Expression.Call(
-                _jsonDocumentParseMethod,
+                JsonDocumentParseMethod,
                 expression,
                 Expression.Default(typeof(JsonDocumentOptions))),
-            _jsonDocumentRootElementMember);
+            JsonDocumentRootElementMember);
 
     /// <summary>
     ///     This is an internal API that supports the Entity Framework Core infrastructure and not subject to

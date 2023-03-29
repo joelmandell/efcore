@@ -504,7 +504,9 @@ public sealed partial class SelectExpression : TableExpressionBase
         {
             var targetEntityType = ownedJsonNavigation.TargetEntityType;
             var jsonColumnName = targetEntityType.GetContainerColumnName()!;
-            var jsonColumnTypeMapping = targetEntityType.GetContainerColumnTypeMapping()!;
+            var jsonColumnTypeMapping = (entityType.GetViewOrTableMappings().SingleOrDefault()?.Table
+                    ?? entityType.GetDefaultMappings().Single().Table)
+                .FindColumn(jsonColumnName)!.StoreTypeMapping;
 
             var jsonColumn = new ConcreteColumnExpression(
                 jsonColumnName,
@@ -2330,15 +2332,6 @@ public sealed partial class SelectExpression : TableExpressionBase
 
             var innerColumn1 = (SqlExpression)expression1;
             var innerColumn2 = (SqlExpression)expression2;
-            // For now, make sure that both sides output the same store type, otherwise the query may fail.
-            // TODO: with #15586 we'll be able to also allow different store types which are implicitly convertible to one another.
-            if (!string.Equals(
-                    innerColumn1.TypeMapping!.StoreType,
-                    innerColumn2.TypeMapping!.StoreType,
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException(RelationalStrings.SetOperationsOnDifferentStoreTypes);
-            }
 
             // We have to unique-fy left side since those projections were never uniquified
             // Right side is unique already when we did it when running select2 through it.
@@ -3995,6 +3988,12 @@ public sealed partial class SelectExpression : TableExpressionBase
             }
             else if (table is SetOperationBase { IsDistinct: false } setOperation)
             {
+                if (setOperation.Source1.IsDistinct
+                    || setOperation.Source2.IsDistinct)
+                {
+                    continue;
+                }
+
 #if DEBUG
                 setOperation.Source1.Prune(columnsMap[tableAlias], removedAliases);
                 setOperation.Source2.Prune(columnsMap[tableAlias], removedAliases);

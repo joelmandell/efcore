@@ -18,6 +18,7 @@ public class JsonQueryData : ISetSource
         JsonEntitiesSingleOwned = CreateJsonEntitiesSingleOwned();
         JsonEntitiesInheritance = CreateJsonEntitiesInheritance();
         JsonEntitiesAllTypes = CreateJsonEntitiesAllTypes();
+        JsonEntitiesConverters = CreateJsonEntitiesConverters();
     }
 
     public IReadOnlyList<EntityBasic> EntitiesBasic { get; }
@@ -30,6 +31,7 @@ public class JsonQueryData : ISetSource
     public IReadOnlyList<JsonEntitySingleOwned> JsonEntitiesSingleOwned { get; set; }
     public IReadOnlyList<JsonEntityInheritanceBase> JsonEntitiesInheritance { get; set; }
     public IReadOnlyList<JsonEntityAllTypes> JsonEntitiesAllTypes { get; set; }
+    public IReadOnlyList<JsonEntityConverters> JsonEntitiesConverters { get; set; }
 
 
     public static IReadOnlyList<JsonEntityBasicString> CreateJsonEntitiesBasicString()
@@ -786,6 +788,43 @@ public class JsonQueryData : ISetSource
         };
     }
 
+    public static IReadOnlyList<JsonEntityConverters> CreateJsonEntitiesConverters()
+    {
+        var r1 = new JsonOwnedConverters
+        {
+            BoolConvertedToIntZeroOne = true,
+            BoolConvertedToStringTrueFalse = false,
+            BoolConvertedToStringYN = true,
+            IntZeroOneConvertedToBool = 0,
+            StringTrueFalseConvertedToBool = "True",
+            StringYNConvertedToBool = "N",
+        };
+
+        var r2 = new JsonOwnedConverters
+        {
+            BoolConvertedToIntZeroOne = false,
+            BoolConvertedToStringTrueFalse = true,
+            BoolConvertedToStringYN = false,
+            IntZeroOneConvertedToBool = 1,
+            StringTrueFalseConvertedToBool = "False",
+            StringYNConvertedToBool = "Y",
+        };
+
+        return new List<JsonEntityConverters>
+        {
+            new()
+            {
+                Id = 1,
+                Reference = r1,
+            },
+            new()
+            {
+                Id = 2,
+                Reference = r2,
+            }
+        };
+    }
+
     public IQueryable<TEntity> Set<TEntity>()
         where TEntity : class
     {
@@ -827,6 +866,11 @@ public class JsonQueryData : ISetSource
         if (typeof(TEntity) == typeof(JsonEntityAllTypes))
         {
             return (IQueryable<TEntity>)JsonEntitiesAllTypes.OfType<JsonEntityAllTypes>().AsQueryable();
+        }
+
+        if (typeof(TEntity) == typeof(JsonEntityConverters))
+        {
+            return (IQueryable<TEntity>)JsonEntitiesConverters.OfType<JsonEntityConverters>().AsQueryable();
         }
 
         if (typeof(TEntity) == typeof(JsonEntityBasicForReference))
