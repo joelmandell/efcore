@@ -13,7 +13,6 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.Internal;
 /// </summary>
 public class SqlServerJsonFunctionsTranslator : IMethodCallTranslator
 {
-
     private readonly Dictionary<MethodInfo, string> _methodInfoJsonFunctions
         = new()
         {
