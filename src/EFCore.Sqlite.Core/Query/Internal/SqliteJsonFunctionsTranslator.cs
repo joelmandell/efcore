@@ -13,14 +13,8 @@ namespace Microsoft.EntityFrameworkCore.Sqlite.Query.Internal;
 /// </summary>
 public class SqliteJsonFunctionsTranslator : IMethodCallTranslator
 {
-    private readonly Dictionary<MethodInfo, string> _methodInfoJsonFunctions
-        = new()
-        {
-            {
-                typeof(SqliteDbFunctionsExtensions).GetRuntimeMethod(nameof(SqliteDbFunctionsExtensions.JsonExtract), new[] { typeof(DbFunctions), typeof(object), typeof(string[]) })!,
-                "json_extract"
-            }
-        };
+    private static MethodInfo _methodInfoJsonExtract =>
+        typeof(SqliteDbFunctionsExtensions).GetRuntimeMethod(nameof(SqliteDbFunctionsExtensions.JsonExtract), new[] { typeof(DbFunctions), typeof(object), typeof(string[]) })!;
 
     private readonly ISqlExpressionFactory _sqlExpressionFactory;
 
@@ -49,7 +43,7 @@ public class SqliteJsonFunctionsTranslator : IMethodCallTranslator
         IReadOnlyList<SqlExpression> arguments,
         IDiagnosticsLogger<DbLoggerCategory.Query> logger)
     {
-        if (_methodInfoJsonFunctions.TryGetValue(method, out var function))
+        if (method == _methodInfoJsonExtract)
         {
             var expression = arguments[1];
             var paths = arguments[2];
@@ -67,7 +61,7 @@ public class SqliteJsonFunctionsTranslator : IMethodCallTranslator
             }
 
             return _sqlExpressionFactory.Function(
-                function,
+                nameof(SqliteDbFunctionsExtensions.JsonExtract),
                 functionArguments,
                 nullable: true,
                 argumentsPropagateNullability: functionArguments.Select(_ => true).ToList(),
