@@ -58,9 +58,6 @@ public class SqlServerJsonFunctionsTranslator : IMethodCallTranslator
             var expression = arguments[1];
             var path = arguments[2];
 
-            //Do not allow null as path arg. Pass '$' as default path.
-            if (((SqlConstantExpression)path).Value == null) path = _sqlExpressionFactory.Constant("$");
-
             var functionArguments = new List<SqlExpression> { expression, path };
 
             return _sqlExpressionFactory.Function(
