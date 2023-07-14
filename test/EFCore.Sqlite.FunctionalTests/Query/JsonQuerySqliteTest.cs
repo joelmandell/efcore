@@ -14,6 +14,7 @@ public class JsonQuerySqliteTest : JsonQueryTestBase<JsonQuerySqliteFixture>
     {
         Fixture.TestSqlLoggerFactory.Clear();
         //Fixture.TestSqlLoggerFactory.SetTestOutputHelper(testOutputHelper);
+
     }
 
     public override async Task Project_json_entity_FirstOrDefault_subquery(bool async)
@@ -43,6 +44,34 @@ public class JsonQuerySqliteTest : JsonQueryTestBase<JsonQuerySqliteFixture>
             (await Assert.ThrowsAsync<InvalidOperationException>(
                 () => base.Project_json_entity_FirstOrDefault_subquery_deduplication_outer_reference_and_pruning(async)))
             .Message);
+
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
+    public async Task JsonExtract_Query_Single_Path(bool async)
+    {
+        var ctx = Fixture.CreateContext();
+
+        var actual = ctx.JsonEntitiesBasicString.Select(c => new { Result = EF.Functions.JsonExtract(c.OwnedReferenceRoot, "$.Number") });
+
+        var result = async ? await actual.ToListAsync() : actual.ToList();
+        var queryString = actual.ToQueryString();
+
+        Assert.Equal("10", result.FirstOrDefault()?.Result);
+    }
+
+    [ConditionalTheory]
+    [MemberData(nameof(IsAsyncData))]
+    public async Task JsonExtract_Query_Multiple_Paths(bool async)
+    {
+        var ctx = Fixture.CreateContext();
+
+        var actual = ctx.JsonEntitiesBasicString.Select(c => new { Result = EF.Functions.JsonExtract(c.OwnedReferenceRoot, "$.Number", "$.Name") });
+
+        var result = async ? await actual.ToListAsync() : actual.ToList();
+        var queryString = actual.ToQueryString();
+
+        Assert.Equal($@"[10,""e1_r""]", result.FirstOrDefault()?.Result);
+    }
 
     [ConditionalTheory]
     [MemberData(nameof(IsAsyncData))]

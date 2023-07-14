@@ -13,6 +13,8 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Query.Internal;
 /// </summary>
 public class SqlServerJsonFunctionsTranslator : IMethodCallTranslator
 {
+    private static readonly bool[] _propagatedNulls = new bool[] { true, true };
+    
     private static readonly Dictionary<MethodInfo, string> _methodInfoJsonFunctions
         = new()
         {
@@ -51,23 +53,6 @@ public class SqlServerJsonFunctionsTranslator : IMethodCallTranslator
         SqlExpression? instance,
         MethodInfo method,
         IReadOnlyList<SqlExpression> arguments,
-        IDiagnosticsLogger<DbLoggerCategory.Query> logger)
-    {
-        if (_methodInfoJsonFunctions.TryGetValue(method, out var function))
-        {
-            var expression = arguments[1];
-            var path = arguments[2];
-
-            var functionArguments = new List<SqlExpression> { expression, path };
-
-            return _sqlExpressionFactory.Function(
-                function,
-                functionArguments,
-                nullable: true,
-                argumentsPropagateNullability: functionArguments.Select(_ => true).ToList(),
-                typeof(string));
-        }
-
-        return null;
-    }
+        IDiagnosticsLogger<DbLoggerCategory.Query> logger) => _methodInfoJsonFunctions.TryGetValue(method, out var function) ?
+                _sqlExpressionFactory.Function(function,new List<SqlExpression> { arguments[1], arguments[2] }, nullable: true,argumentsPropagateNullability: _propagatedNulls,typeof(string)) : null;
 }
